@@ -2,6 +2,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from utils import save, to_device, process_control, process_dataset, make_optimizer, make_scheduler, resume, collate
+
 import copy
 import types
 
@@ -18,9 +20,8 @@ def snip_forward_linear(self, x):
 def SNIP(net, keep_ratio, train_dataloader, device):
 
     # Grab a single batch from the training dataset
-    inputs, targets = next(iter(train_dataloader))
-    inputs = inputs.to(device)
-    targets = targets.to(device)
+    batch = collate(next(iter(train_dataloader)))
+    inputs = to_device(batch, 'cuda')
 
     # Let's create a fresh copy of the network so that we're not worried about
     # affecting the actual training-phase
@@ -43,7 +44,8 @@ def SNIP(net, keep_ratio, train_dataloader, device):
     # Compute gradients (but don't apply them)
     net.zero_grad()
     outputs = net.forward(inputs)
-    loss = F.nll_loss(outputs, targets)
+    loss = outputs['loss']
+    # loss = F.nll_loss(outputs, inputs['label'])
     loss.backward()
 
     grads_abs = []
